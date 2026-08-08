@@ -1,0 +1,80 @@
+name: Build GKI KernelSU-Next SuSFS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Maximize Build Space
+        uses: easimon/maximize-build-space@v10
+        with:
+          root-reserve-mb: 8192
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison flex git-core gnupg build-essential ccache curl libffi-dev libssl-dev libxml2-utils xsltproc zlib1g-dev python3 zip unzips
+
+      - name: Install Repo Tool
+        run: |
+          mkdir -p ~/.bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/.bin/repo
+          chmod a+rx ~/.bin/repo
+          echo "$HOME/.bin" >> $GITHUB_PATH
+
+      - name: Sync Android Common Kernel Source
+        run: |
+          mkdir android-kernel && cd android-kernel
+          repo init -u https://android.googlesource.com/kernel/manifest -b android12-5.10 --depth=1
+          repo sync -c -j$(nproc --all)
+
+      - name: Setup KernelSU-Next & SuSFS
+        run: |
+          cd android-kernel/common
+          
+          # 1. Nhúng KernelSU-Next (SukiSU)
+          curl -LSs "https://raw.githubusercontent.com/rifs33/KernelSU-Next/next/kernel/setup.sh" | bash -s next
+          
+          # 2. Clone SuSFS Patches
+          git clone https://gitlab.com/simonfong8/susfs4ksu.git -b gki-android12-5.10 susfs
+          
+          # 3. Apply Patch SuSFS vào Kernel & KernelSU-Next
+          cp susfs/kernel_patches/KernelSU/1001-App-Profile-Fix-for-SuSFS.patch KernelSU-Next/ || true
+          cp susfs/kernel_patches/fs/* fs/ || true
+          cp susfs/kernel_patches/include/linux/* include/linux/ || true
+          
+          patch -p1 < susfs/kernel_patches/5.10/0001-kernel-5.10-susfs-v1.5.5.patch || true
+          
+          # 4. Bật Cấu hình Config SuSFS
+          echo "CONFIG_KSU=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> arch/arm64/configs/gki_defconfig
+
+      - name: Build Kernel Image
+        run: |
+          cd android-kernel
+          LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
+
+      - name: Package Output
+        run: |
+          mkdir -p output
+          cp android-kernel/out/android12-5.10/dist/Image output/Image
+          cd output
+          zip -r gki-ksu-susfs-5.10.zip Image
+
+      - name: Upload Output Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GKI-KernelSU-Next-SuSFS-Image
+          path: output/gki-ksu-susfs-5.10.zip
