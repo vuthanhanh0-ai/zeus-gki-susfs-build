@@ -38,10 +38,10 @@ jobs:
         run: |
           cd android-kernel/common
           
-          # 1. Clone KernelSU-Next trực tiếp vào thư mục KernelSU-Next
-          git clone https://github.com/rifs33/KernelSU-Next.git KernelSU-Next
+          # 1. Clone KernelSU-Next chuẩn từ repo public
+          git clone https://github.com/rifferg/KernelSU-Next.git KernelSU-Next || git clone https://github.com/tian-son/KernelSU-Next.git KernelSU-Next
           
-          # Link các file từ KernelSU-Next vào cây mã nguồn Kernel
+          # Link các file KernelSU-Next vào cây mã nguồn Kernel
           ln -sf ../KernelSU-Next/kernel drivers/kernelsu || true
           
           # Thêm drivers/kernelsu vào Makefile của drivers
