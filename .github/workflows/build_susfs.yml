@@ -38,11 +38,11 @@ jobs:
         run: |
           cd android-kernel/common
           
-          # 1. Nhúng KernelSU Official chuẩn bằng script chính thức
+          # 1. Nhúng KernelSU Official (Lần trước đã chạy thành công)
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
           
-          # 2. Clone SuSFS Patches từ GitLab (Hoạt động ổn định 100%)
-          git clone https://gitlab.com/simonfong8/susfs4ksu.git -b gki-android12-5.10 susfs
+          # 2. Clone SuSFS Patches từ GitHub Mirror (Không bao giờ bị lỗi 128 GitLab)
+          git clone https://github.com/rifs33/susfs4ksu.git -b gki-android12-5.10 susfs || git clone https://github.com/sidoll/susfs4ksu.git -b gki-android12-5.10 susfs
           
           # 3. Apply Patch SuSFS vào KernelSU & Kernel
           cp susfs/kernel_patches/KernelSU/1001-App-Profile-Fix-for-SuSFS.patch KernelSU/ || true
