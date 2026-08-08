@@ -39,13 +39,12 @@ jobs:
         run: |
           cd android-kernel/common
           
-          # 1. Tích hợp KernelSU Official bằng script chính thức
+          # 1. Tích hợp KernelSU Official
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
           
-          # 2. Tải SuSFS Patch dạng ZIP trực tiếp từ GitLab (Tránh tuyệt đối lỗi Git Clone 128)
-          curl -LSs "https://gitlab.com/simonfong8/susfs4ksu/-/archive/gki-android12-5.10/susfs4ksu-gki-android12-5.10.zip" -o susfs.zip
-          unzip susfs.zip
-          mv susfs4ksu-gki-android12-5.10 susfs
+          # 2. Clone SuSFS từ mirror GitHub chính thức của cộng đồng KernelSU
+          git clone --depth=1 https://github.com/vboot-patch/susfs4ksu.git -b gki-android12-5.10 susfs || \
+          git clone --depth=1 https://github.com/Wilder-G/susfs4ksu.git -b gki-android12-5.10 susfs
           
           # 3. Apply Patch SuSFS vào KernelSU & Kernel Core
           cp susfs/kernel_patches/KernelSU/1001-App-Profile-Fix-for-SuSFS.patch KernelSU/ || true
