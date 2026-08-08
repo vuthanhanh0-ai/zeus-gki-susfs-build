@@ -31,9 +31,9 @@ jobs:
       - name: Sync Android Common Kernel Source
         run: |
           mkdir android-kernel && cd android-kernel
-          repo init -u https://android.googlesource.com/kernel/manifest -b android12-5.10 --depth=1
+          repo init -u https://android.googlesource.com/kernel/manifest -b common-android12-5.10 --depth=1
           repo sync -c -j$(nproc --all)
-
+          
       - name: Setup KernelSU-Next & SuSFS
         run: |
           cd android-kernel/common
