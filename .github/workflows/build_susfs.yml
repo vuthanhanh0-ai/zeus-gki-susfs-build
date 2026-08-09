@@ -34,21 +34,35 @@ jobs:
         run: |
           cd android-kernel/common
           
-          # 1. Tải SukiSU / KernelSU setup script
-          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
+          # 1. Tải SukiSU (KernelSU-Next / SukiSU-Ultra) trực tiếp vào drivers/kernelsu
+          git clone -b next https://github.com/rifs33/KernelSU-Next drivers/kernelsu
           
-          # 2. Clone SuSFS Patches từ GitHub
-          git clone --depth=1 https://github.com/vboot-patch/susfs4ksu.git -b gki-android12-5.10 susfs || true
+          # Thêm drivers/kernelsu vào Makefile & Kconfig của Kernel
+          grep -q "obj-y += kernelsu/" drivers/Makefile || echo "obj-y += kernelsu/" >> drivers/Makefile
+          grep -q "source \"drivers/kernelsu/Kconfig\"" drivers/Kconfig || sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
           
-          # 3. Apply Patch vào Kernel
+          # 2. Tải SuSFS Patches chính thức
+          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android12-5.10 susfs || true
+          
+          # 3. Apply Patch SuSFS vào Kernel Core & SukiSU
           if [ -d "susfs" ]; then
-            cp susfs/kernel_patches/KernelSU/1001-App-Profile-Fix-for-SuSFS.patch KernelSU/ || true
+            # Copy file header & fs của susfs vào kernel
             cp susfs/kernel_patches/fs/* fs/ || true
             cp susfs/kernel_patches/include/linux/* include/linux/ || true
+            
+            # Copy patch hooks dành riêng cho KernelSU/SukiSU
+            cp susfs/kernel_patches/KernelSU/1001-App-Profile-Fix-for-SuSFS.patch drivers/kernelsu/ || true
+            
+            # Patch Kernel 5.10
             patch -p1 < susfs/kernel_patches/5.10/0001-kernel-5.10-susfs-v1.5.5.patch || true
+            
+            # Patch SukiSU/KernelSU-Next
+            cd drivers/kernelsu
+            patch -p1 < 1001-App-Profile-Fix-for-SuSFS.patch || true
+            cd ../..
           fi
           
-          # 4. Thêm Cấu hình Config SuSFS
+          # 4. Kích hoạt Cấu hình Config SuSFS & SukiSU trong defconfig
           cat >> arch/arm64/configs/gki_defconfig <<EOF
           CONFIG_KSU=y
           CONFIG_KSU_SUSFS=y
@@ -58,29 +72,33 @@ jobs:
           CONFIG_KSU_SUSFS_SUS_OVERLAYFS=y
           CONFIG_KSU_SUSFS_TRY_UMOUNT=y
           CONFIG_KSU_SUSFS_SPOOF_UNAME=y
+          CONFIG_KSU_SUSFS_ENABLE_LOG=y
           EOF
 
       - name: Build Kernel
         run: |
           cd android-kernel
+          # Tắt check_defconfig để không bị ngắt build
           sed -i 's/check_defconfig//g' build/build.sh || true
           sed -i 's/check_defconfig//g' common/build.config.gki || true
+          
           LTO=thin SKIP_DEFCONFIG_CHECK=1 BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
 
-      - name: Package AnyKernel3 Flashable ZIP
+      - name: Package AnyKernel3
         run: |
-          # Clone bộ AnyKernel3 GKI chuẩn
           git clone https://github.com/osm0sis/AnyKernel3.git --depth=1 AnyKernel3
-          
-          # Copy file Image vừa build vào AnyKernel3
           cp android-kernel/out/android12-5.10/dist/Image AnyKernel3/Image
           
-          # Đóng gói thành file zip
+          # Cấu hình anykernel.sh tự động cho Xiaomi 12 Pro (zeus)
           cd AnyKernel3
+          sed -i 's/device.name1=/device.name1=zeus/g' anykernel.sh
+          sed -i 's/BLOCK=/BLOCK=\/dev\/block\/by-name\/boot;/g' anykernel.sh
+          sed -i 's/IS_SLOT_DEVICE=0/IS_SLOT_DEVICE=auto/g' anykernel.sh
+          
           zip -r9 ../SukiSU-SuSFS-Zeus-AnyKernel3.zip * -x .git\* README.md *placeholder
 
-      - name: Upload AnyKernel3 Artifact
+      - name: Upload Output Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SukiSU-SuSFS-AnyKernel3-Zip
+          name: SukiSU-SuSFS-Zeus-AnyKernel3
           path: SukiSU-SuSFS-Zeus-AnyKernel3.zip
