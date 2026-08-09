@@ -63,16 +63,24 @@ jobs:
       - name: Build Kernel
         run: |
           cd android-kernel
-          
-          # Vô hiệu hóa hàm check_defconfig trong build.config.gki để triệt tiêu lỗi
           sed -i 's/check_defconfig//g' build/build.sh || true
           sed -i 's/check_defconfig//g' common/build.config.gki || true
-          
-          # Chạy build kernel
           LTO=thin SKIP_DEFCONFIG_CHECK=1 BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
 
-      - name: Upload Output Artifact
+      - name: Package AnyKernel3 Flashable ZIP
+        run: |
+          # Clone bộ AnyKernel3 GKI chuẩn
+          git clone https://github.com/osm0sis/AnyKernel3.git --depth=1 AnyKernel3
+          
+          # Copy file Image vừa build vào AnyKernel3
+          cp android-kernel/out/android12-5.10/dist/Image AnyKernel3/Image
+          
+          # Đóng gói thành file zip
+          cd AnyKernel3
+          zip -r9 ../SukiSU-SuSFS-Zeus-AnyKernel3.zip * -x .git\* README.md *placeholder
+
+      - name: Upload AnyKernel3 Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SukiSU-SuSFS-Image
-          path: android-kernel/out/android12-5.10/dist/Image
+          name: SukiSU-SuSFS-AnyKernel3-Zip
+          path: SukiSU-SuSFS-Zeus-AnyKernel3.zip
