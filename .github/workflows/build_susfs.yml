@@ -34,15 +34,25 @@ jobs:
         run: |
           cd android-kernel/common
           
-          # 1. Tải SukiSU-Ultra (Để git tự bắt nhánh mặc định chuẩn nhất, không ép nhánh nữa)
-          git clone https://github.com/rifsxd/KernelSU-Next.git drivers/kernelsu
+          # 1. Tải SukiSU (KernelSU-Next) dạng ZIP chính thức từ GitHub (Tải trực tiếp, không qua git clone)
+          curl -LSs "https://github.com/rifsxd/KernelSU-Next/archive/refs/heads/next.zip" -o ksu.zip || \
+          curl -LSs "https://github.com/rifsxd/KernelSU-Next/archive/refs/heads/main.zip" -o ksu.zip
           
-          # Tích hợp drivers/kernelsu vào hệ thống Makefile & Kconfig
+          unzip -q ksu.zip
+          rm ksu.zip
+          mv KernelSU-Next-* drivers/kernelsu
+          
+          # Tích hợp drivers/kernelsu vào Makefile & Kconfig
           grep -q "obj-y += kernelsu/" drivers/Makefile || echo "obj-y += kernelsu/" >> drivers/Makefile
           grep -q "source \"drivers/kernelsu/Kconfig\"" drivers/Kconfig || sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
           
           # 2. Tải SuSFS Patches chính thức
-          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android12-5.10 susfs || true
+          curl -LSs "https://gitlab.com/simonpunk/susfs4ksu/-/archive/gki-android12-5.10/susfs4ksu-gki-android12-5.10.zip" -o susfs.zip || true
+          if [ -f "susfs.zip" ]; then
+            unzip -q susfs.zip
+            rm susfs.zip
+            mv susfs4ksu-gki-android12-5.10 susfs
+          fi
           
           # 3. Apply Patch SuSFS vào Kernel Core & SukiSU
           if [ -d "susfs" ]; then
