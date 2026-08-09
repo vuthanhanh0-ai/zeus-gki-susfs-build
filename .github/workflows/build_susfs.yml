@@ -34,11 +34,10 @@ jobs:
         run: |
           cd android-kernel/common
           
-          # 1. Tải SukiSU-Ultra (KernelSU-Next) từ repo chuẩn của tác giả rifsxd
-          git clone -b next https://github.com/rifsxd/KernelSU-Next.git drivers/kernelsu || \
-          git clone -b main https://github.com/rifsxd/KernelSU-Next.git drivers/kernelsu
+          # 1. Tải SukiSU-Ultra (Để git tự bắt nhánh mặc định chuẩn nhất, không ép nhánh nữa)
+          git clone https://github.com/rifsxd/KernelSU-Next.git drivers/kernelsu
           
-          # Tích hợp drivers/kernelsu vào hệ thống Makefile & Kconfig của Kernel
+          # Tích hợp drivers/kernelsu vào hệ thống Makefile & Kconfig
           grep -q "obj-y += kernelsu/" drivers/Makefile || echo "obj-y += kernelsu/" >> drivers/Makefile
           grep -q "source \"drivers/kernelsu/Kconfig\"" drivers/Kconfig || sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
           
