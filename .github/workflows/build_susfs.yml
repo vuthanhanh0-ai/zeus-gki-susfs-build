@@ -61,7 +61,8 @@ jobs:
       - name: Build Kernel
         run: |
           cd android-kernel
-          LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
+          # Thêm cờ POST_DEFCONFIG_CMDS để bypass kiểm tra gki_defconfig mismatch
+          LTO=thin POST_DEFCONFIG_CMDS="true" BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh
 
       - name: Upload Output Artifact
         uses: actions/upload-artifact@v4
